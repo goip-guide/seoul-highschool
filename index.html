@@ -722,57 +722,92 @@ function renderMap(){
   var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs), minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
   // 높이는 학교 분포 모양에 맞춤 (가로로 넓은 학교군은 낮게, 세로로 긴 학교군은 높게)
   var dx = Math.max(maxX-minX,1e-4), dy = Math.max(maxY-minY,1e-4);
-  var scX = (W-PAD*2-60)/dx, scY;
-  if(narrow){
-    // 휴대폰: 개략도이므로 세로 간격을 최대 2.2배까지 넓혀 이름표가 들어갈 자리를 만든다
-    H = 600; scY = Math.min((H-PAD*2-20)/dy, scX*2.2);
-    H = Math.round(Math.max(dy*scY + PAD*2 + 30, 380));
-  } else {
-    H = Math.round(Math.min(Math.max(dy*scX + PAD*2 + 30, 340), 520));
-    scX = scY = Math.min(scX, (H-PAD*2)/dy);
+  var dense = list.length > 18, fs = dense ? 12.5 : 14.5, lh = dense ? 21 : 24;
+
+  // 이름표가 모두 들어갈 때까지 세로 간격을 조금씩 늘려 가며 배치를 시도한다
+  // (전기고까지 표시하면 학교가 30곳이 넘어 기본 크기로는 이름표가 빠지는 경우가 있음)
+  function layout(stretch){
+    var scX = (W-PAD*2-60)/dx, scY, H2;
+    if(narrow){
+      // 휴대폰: 개략도이므로 세로 간격을 넓혀 이름표가 들어갈 자리를 만든다
+      scY = Math.min((600-PAD*2-20)/dy, scX*2.2) * stretch;
+      H2 = Math.round(Math.max(dy*scY + PAD*2 + 30, 380));
+    } else {
+      H2 = Math.round(Math.min(Math.max(dy*scX + PAD*2 + 30, 340), 520));
+      scX = scY = Math.min(scX, (H2-PAD*2)/dy);
+      if(stretch > 1){ scY = scY*stretch; H2 = Math.round(dy*scY + PAD*2 + 30); }
+    }
+    var ox = (W - dx*scX)/2, oy = (H2 - dy*scY)/2;
+    // 같은 자리(같은 캠퍼스 등)에 있는 학교는 점을 살짝 벌려 둘 다 보이게
+    var pts = list.map(function(s){ return { s:s, x: ox + (s.lng*k-minX)*scX, y: oy + (-s.lat-minY)*scY }; });
+    pts.forEach(function(p, i){
+      var dup = 0;
+      for(var j=0;j<i;j++){ if(Math.abs(pts[j].x-p.x)<8 && Math.abs(pts[j].y-p.y)<8) dup++; }
+      if(dup){ var a = dup*2.1; p.x += Math.cos(a)*15; p.y += Math.sin(a)*15; }
+    });
+    var placed = [{ x:16, y:20, w:150, h:44 }];
+    pts.forEach(function(p){ placed.push({ x:p.x-9, y:p.y-9, w:18, h:18 }); });
+    function out(r){ return r.x<6 || r.y<6 || r.x+r.w>W-6 || r.y+r.h>H2-6; }
+    function overlaps(r){
+      var n = 0;
+      for(var i=0;i<placed.length;i++){ var q=placed[i]; if(r.x<q.x+q.w && r.x+r.w>q.x && r.y<q.y+q.h && r.y+r.h>q.y) n++; }
+      return n;
+    }
+    function candsOf(p, lw){
+      var cs = [
+        {side:"r", x:p.x+14, y:p.y-lh/2}, {side:"l", x:p.x-14-lw, y:p.y-lh/2},
+        {side:"t", x:p.x-lw/2, y:p.y-14-lh}, {side:"b", x:p.x-lw/2, y:p.y+14}
+      ];
+      [18, -18, 36, -36, 54, -54, 72, -72, 90, -90].forEach(function(d){
+        cs.push({side:"r", x:p.x+14, y:p.y-lh/2+d}, {side:"l", x:p.x-14-lw, y:p.y-lh/2+d});
+      });
+      [30, -30, 56, -56].forEach(function(d){ cs.push({side:d>0?"b":"t", x:p.x-lw/2, y:(d>0 ? p.y+14+d : p.y-14-lh+d)}); });
+      [lw/2+6, -(lw/2+6)].forEach(function(sx){ [0, 26, 52].forEach(function(d){
+        cs.push({side:"b", x:p.x-lw/2+sx, y:p.y+14+d}, {side:"t", x:p.x-lw/2+sx, y:p.y-14-lh-d});
+      }); });
+      [36, 64].forEach(function(gap){ [0, 22, -22].forEach(function(d){
+        cs.push({side:"r", x:p.x+gap, y:p.y-lh/2+d}, {side:"l", x:p.x-gap-lw, y:p.y-lh/2+d});
+      }); });
+      return cs;
+    }
+    // 주변에 학교가 많은 곳(자리 잡기 어려운 학교)부터 이름표를 놓는다
+    pts.forEach(function(p){ p.crowd = pts.filter(function(q){ return Math.abs(q.x-p.x)<90 && Math.abs(q.y-p.y)<60; }).length; });
+    var order = pts.slice().sort(function(a,b){ return (b.crowd-a.crowd) || (a.x-b.x); });
+    var miss = 0;
+    order.forEach(function(p){
+      var lw = Math.max(40, p.s.n.length*fs + 12), cs = candsOf(p, lw), c = null;
+      for(var i=0;i<cs.length;i++){ var r = {x:cs[i].x, y:cs[i].y, w:lw, h:lh}; if(!out(r) && !overlaps(r)){ c = cs[i]; break; } }
+      if(!c){
+        // 빈 자리가 없으면 겹침이 가장 적은 자리라도 쓴다 (이름이 빠지지 않게)
+        miss++; var best = 1e9;
+        cs.forEach(function(cc){
+          var r = {x:cc.x, y:cc.y, w:lw, h:lh}; if(out(r)) return;
+          var area = 0;
+          placed.forEach(function(q){ var ox2 = Math.min(r.x+r.w, q.x+q.w) - Math.max(r.x, q.x), oy2 = Math.min(r.y+r.h, q.y+q.h) - Math.max(r.y, q.y); if(ox2>0 && oy2>0) area += ox2*oy2; });
+          if(area<best){ best=area; c=cc; }
+        });
+      }
+      if(c){ placed.push({x:c.x, y:c.y, w:lw, h:lh}); p.lab = { side:c.side, x:c.x, y:c.y, w:lw }; }
+    });
+    return { H:H2, pts:pts, placed:placed, miss:miss, out:out, overlaps:overlaps };
   }
+  var L = null, tries = narrow ? [1, 1.25, 1.5, 1.8, 2.1] : [1, 1.2, 1.4, 1.6, 1.8, 2.1];
+  for(var ti=0; ti<tries.length; ti++){ L = layout(tries[ti]); if(!L.miss) break; }
+  H = L.H;
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-  var ox = (W - dx*scX)/2, oy = (H - dy*scY)/2;
-  function proj(s){ return { x: ox + (s.lng*k-minX)*scX, y: oy + (-s.lat-minY)*scY }; }
+  var pts = L.pts, placed = L.placed;
+  function hit(r){ return L.out(r) || L.overlaps(r) > 0; }
 
   // 배경: 학교군 영역(부드러운 사각형)
   mbg.appendChild(el("rect",{ x:8, y:8, width:W-16, height:H-16, rx:18, fill:"var(--land)", stroke:"var(--land-line)", "stroke-width":"1.2", "stroke-dasharray":"6 5" }));
   var t1 = el("text",{ x:24, y:38, "font-size":"15", "font-weight":"700", fill:"var(--muted)" }); t1.textContent = profile.gun + "학교군"; mbg.appendChild(t1);
   var t2 = el("text",{ x:24, y:57, "font-size":"12.5", fill:"var(--muted)" }); t2.textContent = "학교를 눌러 보세요"; mbg.appendChild(t2);
 
-  // 같은 자리(같은 캠퍼스 등)에 있는 학교는 점을 살짝 벌려 둘 다 보이게
-  var pts = list.map(function(s){ var p = proj(s); return { s:s, x:p.x, y:p.y }; });
-  pts.forEach(function(p, i){
-    var dup = 0;
-    for(var j=0;j<i;j++){ if(Math.abs(pts[j].x-p.x)<8 && Math.abs(pts[j].y-p.y)<8) dup++; }
-    if(dup){ var a = dup*2.1; p.x += Math.cos(a)*15; p.y += Math.sin(a)*15; }
-  });
-
-  // 라벨 배치 (겹침 피하기)
-  var placed = [{ x:16, y:20, w:150, h:44 }];
-  pts.forEach(function(p){ placed.push({ x:p.x-9, y:p.y-9, w:18, h:18 }); });
-  function hit(r){
-    if(r.x<6 || r.y<6 || r.x+r.w>W-6 || r.y+r.h>H-6) return true;
-    for(var i=0;i<placed.length;i++){ var q=placed[i]; if(r.x<q.x+q.w && r.x+r.w>q.x && r.y<q.y+q.h && r.y+r.h>q.y) return true; }
-    return false;
-  }
-  var dense = list.length > 18, fs = dense ? 12.5 : 14.5;
-  pts.sort(function(a,b){ return a.x-b.x; }).forEach(function(p){
+  pts.slice().sort(function(a,b){ return a.x-b.x; }).forEach(function(p){
     var s = p.s, kk = kind(s), col = colorOf(kk);
-    var lw = Math.max(40, s.n.length*fs + 12), lh = dense ? 21 : 24;
-    var cands = [
-      {side:"r", x:p.x+14, y:p.y-lh/2}, {side:"l", x:p.x-14-lw, y:p.y-lh/2},
-      {side:"t", x:p.x-lw/2, y:p.y-14-lh}, {side:"b", x:p.x-lw/2, y:p.y+14}
-    ];
-    [18, -18, 36, -36, 54, -54].forEach(function(dy){
-      cands.push({side:"r", x:p.x+14, y:p.y-lh/2+dy}, {side:"l", x:p.x-14-lw, y:p.y-lh/2+dy});
-    });
-    [30, -30].forEach(function(dy){ cands.push({side:dy>0?"b":"t", x:p.x-lw/2, y:(dy>0 ? p.y+14+dy : p.y-14-lh+dy)}); });
-    var c = null;
-    for(var i=0;i<cands.length;i++){ var r = {x:cands[i].x, y:cands[i].y, w:lw, h:lh}; if(!hit(r)){ c = cands[i]; break; } }
+    var c = p.lab, lw = c ? c.w : 0;
     var g = el("g",{ "class":"mk", "data-id":s.id, tabindex:"0", role:"button", "aria-label":s.full + " 정보 보기" });
     if(c){
-      placed.push({x:c.x, y:c.y, w:lw, h:lh});
       var ax = c.side==="r" ? c.x : (c.side==="l" ? c.x+lw : c.x+lw/2);
       var ay = c.side==="t" ? c.y+lh : (c.side==="b" ? c.y : c.y+lh/2);
       g.appendChild(el("line",{ x1:p.x, y1:p.y, x2:ax, y2:ay, stroke:col, "stroke-width":"1.6" }));
