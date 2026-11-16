@@ -29,6 +29,7 @@
   --focus:#0E7581; --focus-bg:#E3F3F4; --focus-line:#A9D6DA;
   --ok:#2C7A4B; --warn:#A9781E; --bad:#A6303B;
   --land:#E3EDDA; --land-line:#84AB6C;
+  --boy-ink:#153F8C; --girl-ink:#8C2D5C; --co-ink:#1E5C37; --jasa-ink:#6E4C0E; --early-ink:#4B3C8C;   /* 지도 이름표 글자 (연한 바탕 위 진한 글씨) */
   --shadow:0 1px 2px rgba(20,30,22,.05), 0 8px 24px -12px rgba(20,30,22,.18);
   --r:14px;
 }
@@ -46,6 +47,7 @@
     --focus:#7FD3DB; --focus-bg:#142A2D; --focus-line:#2B5257;
     --ok:#7FCB99; --warn:#E3BC72; --bad:#F0949B;
     --land:#222B20; --land-line:#618150;
+    --boy-ink:#B3CDF7; --girl-ink:#F5BCD7; --co-ink:#A6DDB8; --jasa-ink:#EBD29E; --early-ink:#CEC5F3;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.7);
     color-scheme:dark;
   }
@@ -63,6 +65,7 @@
   --focus:#7FD3DB; --focus-bg:#142A2D; --focus-line:#2B5257;
   --ok:#7FCB99; --warn:#E3BC72; --bad:#F0949B;
   --land:#222B20; --land-line:#618150;
+  --boy-ink:#B3CDF7; --girl-ink:#F5BCD7; --co-ink:#A6DDB8; --jasa-ink:#EBD29E; --early-ink:#CEC5F3;
   --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.7);
   color-scheme:dark;
 }
@@ -173,6 +176,18 @@ section{ padding:34px 0; border-top:1px solid var(--line); scroll-margin-top:64p
 .lg.b i{background:var(--boy)} .lg.c i{background:var(--co)} .lg.g i{background:var(--girl)} .lg.x i{background:var(--off)}
 .lg.j i{background:var(--surface); box-shadow:0 0 0 3px var(--jasa)}
 .lg.e i{background:var(--surface); box-shadow:0 0 0 3px var(--early)}
+/* 범례: 지도 이름표와 같은 모양 (구분 꼬리표 + 이름) */
+.lgp{
+  display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700;
+  border:1.5px solid var(--line); border-radius:8px; padding:3px 10px 3px 4px;
+}
+.lgp b{ font-family:"Gothic A1",sans-serif; font-size:11px; font-weight:900; color:var(--surface); border-radius:5px; padding:1px 6px; }
+.lgp.b{ background:var(--boy-bg); border-color:var(--boy); color:var(--boy-ink); } .lgp.b b{ background:var(--boy); }
+.lgp.g{ background:var(--girl-bg); border-color:var(--girl); color:var(--girl-ink); } .lgp.g b{ background:var(--girl); }
+.lgp.c{ background:var(--co-bg); border-color:var(--co); color:var(--co-ink); } .lgp.c b{ background:var(--co); }
+.lgp.j{ background:var(--jasa-bg); border-color:var(--jasa); color:var(--jasa-ink); } .lgp.j b{ background:var(--jasa); }
+.lgp.e{ background:var(--early-bg); border-color:var(--early); color:var(--early-ink); } .lgp.e b{ background:var(--early); }
+.lgp.x{ background:var(--off-bg); border-color:var(--off-line); border-style:dashed; color:var(--muted); } .lgp.x b{ background:var(--muted); }
 
 /* ---------- map ---------- */
 .maparea{ padding:10px 10px 4px; overflow:hidden; }
@@ -648,6 +663,27 @@ function kind(s){
   return s.sex==="남" ? "b" : (s.sex==="여" ? "g" : "c");
 }
 function colorOf(k){ return {b:"var(--boy)",c:"var(--co)",g:"var(--girl)",x:"var(--off)",u:"var(--muted)"}[k]; }
+// 지도 이름표: 앞에 구분 꼬리표를 붙이고, 같은 계열의 연한 바탕 + 진한 글씨로 그린다
+// 교육감 배정 일반고: 남 · 여 · 공학 / 학교장 선발: 자사 · 외고 · 국제 / 전기고: 특성화 · 예술 · 마이스터 · 과학 · 체육 · 전기
+function tagOf(s){
+  if(s.sel==="admin") return s.sex;
+  var d = s.detail || "";
+  if(s.sel==="principal") return d.indexOf("외국어")>-1 ? "외고" : (d.indexOf("국제")>-1 ? "국제" : "자사");
+  if(s.type==="특성화고") return "특성화";
+  var m = /^(예술|마이스터|과학|체육)/.exec(d);
+  return m ? m[1] : "전기";
+}
+function tagFs(fs){ return fs < 14 ? 10 : 11; }
+function tagW(s, fs){ return tagOf(s).length*tagFs(fs) + 10; }
+function labelW(s, fs){ return tagW(s, fs) + 4 + s.n.length*fs + 14; }
+function labelStyle(kk, s){
+  if(kk==="x") return { bg:"var(--off-bg)", line:"var(--off-line)", tag:"var(--muted)", ink:"var(--muted)", dash:"4 3" };
+  if(s.sel==="principal") return { bg:"var(--jasa-bg)", line:"var(--jasa)", tag:"var(--jasa)", ink:"var(--jasa-ink)" };
+  if(s.sel==="early") return { bg:"var(--early-bg)", line:"var(--early)", tag:"var(--early)", ink:"var(--early-ink)" };
+  return { b:{ bg:"var(--boy-bg)", line:"var(--boy)", tag:"var(--boy)", ink:"var(--boy-ink)" },
+           g:{ bg:"var(--girl-bg)", line:"var(--girl)", tag:"var(--girl)", ink:"var(--girl-ink)" },
+           c:{ bg:"var(--co-bg)", line:"var(--co)", tag:"var(--co)", ink:"var(--co-ink)" } }[kk];
+}
 function selLabel(s){ return s.sel==="admin" ? "교육감 배정" : (s.sel==="principal" ? "학교장 선발" : "전기 모집 · 학교별 선발"); }
 function typeLabel(s){ return s.type + (s.detail ? " (" + s.detail + ")" : ""); }
 function sexLabel(s){ return s.sex==="남" ? "남자고등학교" : (s.sex==="여" ? "여자고등학교" : "남녀공학"); }
@@ -686,11 +722,11 @@ function renderHeader(){
   h += '<span class="cnt x"><b>' + cnt[other] + '</b> ' + (other==="남"?"남자":"여자") + '고등학교 · 지원 불가</span>';
   $("#counts").innerHTML = h;
   $("#mapLead").textContent = profile.gun + "학교군의 일반고와 자사고를 좌표대로 표시했습니다. 학교 표시를 누르면 학교 유형, 학생·학급 현황, 졸업생 진로 현황, " + (LIMITED ? "학교까지 가는 길 링크가" : "집에서 가는 길이") + " 나옵니다.";
-  var lg = '<span class="lg ' + (profile.sex==="남"?"b":"g") + '"><i></i>' + (profile.sex==="남"?"남자":"여자") + '고등학교</span>'
-         + '<span class="lg c"><i></i>남녀공학</span>'
-         + '<span class="lg j"><i></i>테두리: 학교장 선발 (자사고 등)</span>'
-         + '<span class="lg e"><i></i>테두리: 전기고</span>'
-         + '<span class="lg x"><i></i>' + (other==="남"?"남자":"여자") + '고등학교 (지원 불가)</span>';
+  var lg = '<span class="lgp ' + (profile.sex==="남"?"b":"g") + '"><b>' + profile.sex + '</b>' + (profile.sex==="남"?"남자":"여자") + '고등학교</span>'
+         + '<span class="lgp c"><b>공학</b>남녀공학</span>'
+         + '<span class="lgp x"><b>' + other + '</b>' + (other==="남"?"남자":"여자") + '고등학교 · 지원 불가</span>'
+         + '<span class="lgp j"><b>자사</b><b>외고</b><b>국제</b>학교장 선발</span>'
+         + '<span class="lgp e"><b>특성화</b><b>예술</b><b>과학</b>전기고 (체크하면 표시)</span>';
   $("#legend").innerHTML = lg;
 }
 
@@ -770,7 +806,7 @@ function renderMap(){
     var order = pts.slice().sort(function(a,b){ return (b.crowd-a.crowd) || (a.x-b.x); });
     var miss = 0;
     order.forEach(function(p){
-      var lw = Math.max(40, p.s.n.length*fs + 12), cs = candsOf(p, lw), c = null;
+      var lw = labelW(p.s, fs), cs = candsOf(p, lw), c = null;
       for(var i=0;i<cs.length;i++){ var r = {x:cs[i].x, y:cs[i].y, w:lw, h:lh}; if(!out(r) && !overlaps(r)){ c = cs[i]; break; } }
       if(!c){
         // 빈 자리가 없으면 겹침이 가장 적은 자리라도 쓴다 (이름이 빠지지 않게)
@@ -805,9 +841,13 @@ function renderMap(){
     if(c){
       var ax = c.side==="r" ? c.x : (c.side==="l" ? c.x+lw : c.x+lw/2);
       var ay = c.side==="t" ? c.y+lh : (c.side==="b" ? c.y : c.y+lh/2);
-      g.appendChild(el("line",{ x1:p.x, y1:p.y, x2:ax, y2:ay, stroke:col, "stroke-width":"1.6" }));
-      g.appendChild(el("rect",{ x:c.x, y:c.y, width:lw, height:lh, rx:7, fill:"var(--surface)", stroke:col, "stroke-width":"1.5" }));
-      var t = el("text",{ x:c.x+lw/2, y:c.y+lh/2+fs*0.36, "font-size":String(fs), "font-weight":"900", fill:col, "text-anchor":"middle", "pointer-events":"none" });
+      var st = labelStyle(kk, s), tw = tagW(s, fs), tf = tagFs(fs);
+      g.appendChild(el("line",{ x1:p.x, y1:p.y, x2:ax, y2:ay, stroke:st.tag, "stroke-width":"1.6", "stroke-dasharray":st.dash||"none" }));
+      g.appendChild(el("rect",{ x:c.x, y:c.y, width:lw, height:lh, rx:7, fill:st.bg, stroke:st.line, "stroke-width":"1.5", "stroke-dasharray":st.dash||"none" }));
+      g.appendChild(el("rect",{ x:c.x+4, y:c.y+4, width:tw, height:lh-8, rx:5, fill:st.tag, "pointer-events":"none" }));
+      var tg = el("text",{ x:c.x+4+tw/2, y:c.y+lh/2+tf*0.36, "font-size":String(tf), "font-weight":"900", fill:"var(--surface)", "text-anchor":"middle", "pointer-events":"none" });
+      tg.textContent = tagOf(s); g.appendChild(tg);
+      var t = el("text",{ x:c.x+4+tw+(lw-4-tw)/2, y:c.y+lh/2+fs*0.36, "font-size":String(fs), "font-weight":"900", fill:st.ink, "text-anchor":"middle", "pointer-events":"none" });
       t.textContent = s.n; g.appendChild(t);
     }
     var ringCol = s.sel==="principal" ? "var(--jasa)" : (s.sel==="early" ? "var(--early)" : "var(--surface)");
