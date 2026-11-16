@@ -248,12 +248,6 @@ table.tbl tr.sum th, table.tbl tr.sum td{ font-weight:700; color:var(--ink); bor
   background:var(--surface); color:var(--ink);
 }
 .addrrow input:focus{ outline:2.5px solid var(--seal); outline-offset:1px; border-color:var(--seal); }
-ul.mini{ list-style:none; padding:0; margin:0; font-size:13.5px; }
-ul.mini li{ display:flex; gap:12px; padding:5px 0; border-top:1px dotted var(--line); }
-ul.mini li:first-child{ border-top:0; }
-ul.mini li span:first-child{ flex:none; width:64px; color:var(--seal); font-weight:600; font-size:12.5px; }
-.meal b{ font-size:12.5px; color:var(--muted); display:block; margin-top:6px; }
-.meal div{ font-size:13.5px; line-height:1.6; }
 
 /* ---------- simulator ---------- */
 .sim{ display:grid; gap:16px; }
@@ -425,7 +419,7 @@ footer a{ color:var(--muted); }
     <div class="snum">1</div>
     <div>
       <h2>지도에서 학교 찾기</h2>
-      <p id="mapLead">학교 표시를 누르면 학교 유형, 학생·학급 현황, 집에서 가는 길, 급식과 학사일정이 나옵니다.</p>
+      <p id="mapLead">학교 표시를 누르면 학교 유형, 학생·학급 현황, 졸업생 진로 현황, 집에서 가는 길이 나옵니다.</p>
     </div>
   </div>
 
@@ -585,7 +579,7 @@ footer a{ color:var(--muted); }
 
 <footer><div class="wrap">
   <p>경희중학교 3학년 · 2027학년도 고등학교 입학 안내</p>
-  <p>자료 출처 — 서울시교육청 「2027학년도 고등학교 입학전형 기본계획」, 교육부 NEIS 교육정보 개방 포털(학교 기본정보·급식·학사일정), 학교알리미 공시정보(학생·학급·교원 현황), 각 학교 홈페이지</p>
+  <p>자료 출처 — 서울시교육청 「2027학년도 고등학교 입학전형 기본계획」, 교육부 NEIS 교육정보 개방 포털(학교 기본정보), 학교알리미 공시정보(학생·학급·교원 현황, 졸업생 진로 현황), 각 학교 홈페이지</p>
   <p id="dataDate"></p>
 </div></footer>
 
@@ -619,8 +613,6 @@ var profile = { gun: GUN_OF[gusOf(P.gun)[0]] ? P.gun : DEFAULT.gun, sex: (P.sex=
 function $(s){ return document.querySelector(s); }
 function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function nf(n){ return n==null ? "-" : Number(n).toLocaleString("ko-KR"); }
-function ymd(d){ return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0"); }
-function md(s){ return s && s.length===8 ? (+s.slice(4,6))+"월 "+(+s.slice(6,8))+"일" : "-"; }
 
 /* ===================== 데이터 ===================== */
 var SCHOOLS = [], byId = {}, DATA = {};
@@ -693,7 +685,7 @@ function renderHeader(){
   h += '<span class="cnt j"><b>' + jasa + '</b> 자율형 사립고</span>';
   h += '<span class="cnt x"><b>' + cnt[other] + '</b> ' + (other==="남"?"남자":"여자") + '고등학교 · 지원 불가</span>';
   $("#counts").innerHTML = h;
-  $("#mapLead").textContent = profile.gun + "학교군의 일반고와 자사고를 좌표대로 표시했습니다. 학교 표시를 누르면 학교 유형, 학생·학급 현황, " + (LIMITED ? "학교까지 가는 길 링크가" : "집에서 가는 길, 급식과 학사일정이") + " 나옵니다.";
+  $("#mapLead").textContent = profile.gun + "학교군의 일반고와 자사고를 좌표대로 표시했습니다. 학교 표시를 누르면 학교 유형, 학생·학급 현황, 졸업생 진로 현황, " + (LIMITED ? "학교까지 가는 길 링크가" : "집에서 가는 길이") + " 나옵니다.";
   var lg = '<span class="lg ' + (profile.sex==="남"?"b":"g") + '"><i></i>' + (profile.sex==="남"?"남자":"여자") + '고등학교</span>'
          + '<span class="lg c"><i></i>남녀공학</span>'
          + '<span class="lg j"><i></i>테두리: 학교장 선발 (자사고 등)</span>'
@@ -972,7 +964,6 @@ function showDetail(id){
        + '<a class="btn naver" target="_blank" rel="noopener" href="https://map.naver.com/p/search/' + nmq + '">네이버지도에서 학교 찾기</a></div>'
        + '<p class="fine">카카오맵은 이 학교가 도착지로 정해진 길찾기 화면이 열립니다. 집 주소를 넣어 바로 길찾기 버튼을 만드는 기능은 <a href="' + SITE_URL + '" target="_blank" rel="noopener">공유 사이트</a>에서 쓸 수 있습니다.</p></div>';
     h += '</div>';
-    h += '<div class="dsec"><h4>학사일정 · 오늘의 급식</h4><p class="fine" style="margin:0">학사일정과 급식은 교육청 서버에서 실시간으로 불러오는 정보라 이 화면에서는 볼 수 없습니다. <a href="' + SITE_URL + '" target="_blank" rel="noopener">공유 사이트</a>나 학교 홈페이지에서 확인해 주세요.</p></div>';
     detail.innerHTML = h;
     return;
   }
@@ -980,48 +971,15 @@ function showDetail(id){
      + '<form class="addrrow" id="addrForm"><input id="addr" type="text" placeholder="예) 서울특별시 동대문구 경희대로 26" value="' + esc(homeAddr) + '" aria-label="우리 집 주소">'
      + '<button class="btn" type="submit">길찾기</button></form><div id="route"><p class="fine" style="margin:0">집 주소를 넣으면 길찾기 버튼이 나옵니다. 도로명 주소로 넣으면 잘 찾습니다.</p></div></div>';
   h += '</div>';
-  h += '<div class="dgrid">';
-  h += '<div class="dsec"><h4>다가오는 학사일정 <small>NEIS · 가까운 일정 일부</small></h4><div id="schoolSched"><div class="empty">불러오는 중…</div></div></div>';
-  h += '<div class="dsec"><h4>오늘의 급식 <small>NEIS</small></h4><div id="meal"><div class="empty">불러오는 중…</div></div></div>';
-  h += '</div>';
   detail.innerHTML = h;
 
   $("#addrForm").addEventListener("submit", function(e){ e.preventDefault(); route(s); });
   if(homePos) route(s, true);
-  loadNeis(s);
 }
 document.addEventListener("click", function(e){
   var b = e.target.closest("[data-put]");
   if(b){ assign(b.getAttribute("data-put")); $("#sim").scrollIntoView({behavior:"smooth", block:"start"}); }
 });
-
-/* ---- NEIS (인증키 없이: 최대 5건) ---- */
-function neis(service, s, params){
-  var u = new URL("https://open.neis.go.kr/hub/" + service);
-  var p = Object.assign({ Type:"json", pSize:"5", ATPT_OFCDC_SC_CODE:s.raw.ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE:s.id }, params);
-  Object.keys(p).forEach(function(k){ u.searchParams.set(k, p[k]); });
-  return fetch(u).then(function(r){ return r.json(); }).then(function(j){
-    var row = (j[service]||[]).find(function(x){ return x.row; }); return row ? row.row : [];
-  }).catch(function(){ return null; });
-}
-function loadNeis(s){
-  var today = new Date(), to = new Date(today.getTime() + 60*864e5);
-  neis("SchoolSchedule", s, { AA_FROM_YMD:ymd(today), AA_TO_YMD:ymd(to) }).then(function(rows){
-    var box = document.getElementById("schoolSched"); if(!box || selId!==s.id) return;
-    if(rows===null){ box.innerHTML = '<div class="empty">학사일정을 불러오지 못했습니다.</div>'; return; }
-    var seen = {}, list = [];
-    rows.sort(function(a,b){ return a.AA_YMD.localeCompare(b.AA_YMD); }).forEach(function(r){ var k = r.AA_YMD + r.EVENT_NM; if(!seen[k]){ seen[k]=1; list.push(r); } });
-    box.innerHTML = list.length ? '<ul class="mini">' + list.map(function(r){ return '<li><span>' + md(r.AA_YMD) + '</span><span>' + esc(r.EVENT_NM) + '</span></li>'; }).join("") + '</ul>'
-                                : '<div class="empty">앞으로 60일간 등록된 일정이 없습니다.</div>';
-  });
-  neis("mealServiceDietInfo", s, { MLSV_YMD:ymd(today) }).then(function(rows){
-    var box = document.getElementById("meal"); if(!box || selId!==s.id) return;
-    if(rows===null){ box.innerHTML = '<div class="empty">급식 정보를 불러오지 못했습니다.</div>'; return; }
-    box.innerHTML = rows.length ? rows.map(function(r){
-      return '<div class="meal"><b>' + esc(r.MMEAL_SC_NM) + '</b><div>' + String(r.DDISH_NM).replace(/\s*\([\d.]+\)/g,"").split(/<br\s*\/?>/i).map(esc).join(" · ") + '</div></div>';
-    }).join("") : '<div class="empty">오늘은 급식 정보가 없습니다. (주말 · 방학 · 미등록)</div>';
-  });
-}
 
 /* ---- 길찾기 ---- */
 function to3857(p){

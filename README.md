@@ -51,7 +51,7 @@ python tools/classify.py
 python tools/build_artifact.py
 ```
 - `index.html`로 `artifact/index.html`과 `artifact/schools.json`을 만듭니다.
-- 아티팩트는 외부 서버 요청이 막혀 있어, 급식·학사일정과 집 주소 길찾기 대신 안내와 도착지 지도 링크가 나오는 제한 모드로 동작합니다.
+- 아티팩트는 외부 서버 요청이 막혀 있어, 집 주소 길찾기 대신 도착지 지도 링크가 나오는 제한 모드로 동작합니다.
 
 ## 2. 내 컴퓨터에서 확인
 ```
