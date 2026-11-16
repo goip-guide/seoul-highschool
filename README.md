@@ -25,6 +25,15 @@ python tools/build_stats.py
 ```
 이미 받은 원본(`tools/raw`)으로 키 없이 다시 합치려면 `python tools/build_stats.py --offline`
 
+### 1-1b. 졸업생 진로 현황 합치기 (인증키 필요 없음)
+```
+python tools/build_career.py
+```
+- 학교알리미 「졸업생의 진로 현황」(4년제·전문대·국외 진학, 취업, 기타)을 최근 3개 공시연도만큼 학교별로 받습니다. 8~10분쯤 걸립니다.
+- 이 항목은 OpenAPI에 없어 학교알리미 학교별 공시 화면의 주소에서 받습니다. 1-1을 먼저 실행해 `tools/raw/api0.json`이 있어야 합니다.
+- 이미 받은 원본(`tools/raw/career.json`)으로 다시 합치기만 하려면 `python tools/build_career.py --offline`
+- 학교알리미 화면 구조가 바뀌면 받지 못할 수 있습니다. 그때는 '진로 현황 합침: 0개교'처럼 나옵니다.
+
 ### 1-2. 학교 유형 구분 (일반고/자사고/특목고/특성화고)
 ```
 python tools/classify.py
@@ -35,7 +44,14 @@ python tools/classify.py
   - `ADMIT_OVERRIDE`(모집 시기 직접 지정: 금호·덕수·도선고 후기, 서울미술고 전기)
   - `FOCUS`(예술·체육·과학중점학급 운영학교와 학급 수 — 업무편람 '지원 방법' 표)
 - 지원 자격 확인 규칙(1·2단계 필수, 외고·국제고·자사고 지원 시 1단계 불가, 중점학급 1개교, 체육특기자 1~4순위)은 `index.html`의 `지원 자격 확인` 부분에 있습니다. 업무편람이 바뀌면 함께 확인하세요.
-- 실행 순서: `build_schools.py` → `build_stats.py` → `classify.py`
+- 실행 순서: `build_schools.py` → `build_stats.py` → `build_career.py` → `classify.py`
+
+### 1-3. Claude 아티팩트용 파일 만들기 (선택)
+```
+python tools/build_artifact.py
+```
+- `index.html`로 `artifact/index.html`과 `artifact/schools.json`을 만듭니다.
+- 아티팩트는 외부 서버 요청이 막혀 있어, 급식·학사일정과 집 주소 길찾기 대신 안내와 도착지 지도 링크가 나오는 제한 모드로 동작합니다.
 
 ## 2. 내 컴퓨터에서 확인
 ```
